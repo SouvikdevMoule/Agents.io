@@ -1,5 +1,5 @@
 "use client"
-import { UserButton } from '@stackframe/stack'
+import { OAuthButton, SignIn, UserButton } from '@stackframe/stack'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Menu, X } from 'lucide-react'
 import { useState, useEffect } from 'react'
@@ -169,6 +169,10 @@ const Header = () => {
                     )}
                   </motion.a>
                 ))}
+                <div className="flex flex-col gap-3 px-4 py-3 rounded-lg text-base font-medium text-white bg-blue-700 hover:bg-blue-600">
+                <OAuthButton provider="google" type="sign-in" />
+                <OAuthButton provider="github" type="sign-up" />
+                </div>
               </div>
             </motion.div>
           )}
