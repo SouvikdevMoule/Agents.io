@@ -141,10 +141,13 @@ const Header = () => {
               className="lg:hidden absolute z-50 bg-blue-600/95 border-t border-blue-500/50 shadow-xl"
             >
               <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
+              <div className="flex flex-col gap-3 px-4 py-3 rounded-lg text-base font-medium text-white bg-blue-700 hover:bg-blue-600">
+               <UserButton showUserInfo  />
+                </div>
                 {navItems.map((item : any, index) => (
                   <motion.a
                     key={item.id}
-                    href={`#${item.id}`}
+                    href={`${item.id}`}
                     className={`block px-4 py-3 rounded-lg text-base font-medium relative ${
                       activeSection === item.id 
                         ? 'text-white bg-blue-700' 
@@ -169,10 +172,7 @@ const Header = () => {
                     )}
                   </motion.a>
                 ))}
-                <div className="flex flex-col gap-3 px-4 py-3 rounded-lg text-base font-medium text-white bg-blue-700 hover:bg-blue-600">
-                <OAuthButton provider="google" type="sign-in" />
-                <OAuthButton provider="github" type="sign-up" />
-                </div>
+                
               </div>
             </motion.div>
           )}
