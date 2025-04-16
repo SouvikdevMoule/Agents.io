@@ -171,7 +171,7 @@ const renderTextWithLinks = (text: string) => {
                   className="text-2xl font-bold"
                   whileHover={{ scale: 1.02 }}
                 >
-                  {discussionRoom.expertname || "Unknown Expert"}
+                  {discussionRoom?.expertname || "Unknown Expert"}
                 </motion.h2>
                 <p className="text-blue-100">AI Expert</p>
               </div>
@@ -186,7 +186,7 @@ const renderTextWithLinks = (text: string) => {
                   <div>
                     <h3 className="font-semibold">Coaching Option</h3>
                     <p className="text-default-500">
-                      {discussionRoom.coachingoption}
+                      {discussionRoom?.coachingoption}
                     </p>
                   </div>
                 </motion.div>
@@ -198,7 +198,7 @@ const renderTextWithLinks = (text: string) => {
                   <Bookmark className="text-blue-500 text-xl" />
                   <div>
                     <h3 className="font-semibold">Topic</h3>
-                    <p className="text-default-500">{discussionRoom.topic}</p>
+                    <p className="text-default-500">{discussionRoom?.topic}</p>
                   </div>
                 </motion.div>
               </div>
@@ -222,7 +222,7 @@ const renderTextWithLinks = (text: string) => {
             </CardHeader>
             <CardBody className="p-6 space-y-6 max-h-[500px] overflow-y-auto">
               <AnimatePresence>
-                {discussionRoom.conversation.map((message: any, index: any) => {
+                {discussionRoom?.conversation?.map((message: any, index: any) => {
                   const isUser = message.startsWith("You:");
                   return (
                     <motion.div
@@ -250,7 +250,7 @@ const renderTextWithLinks = (text: string) => {
                             <User className="text-white" />
                           ) : (
                             <Avatar
-                              src={`https://ui-avatars.com/api/?name=${discussionRoom.expertname}&background=random`}
+                              src={`https://ui-avatars.com/api/?name=${discussionRoom?.expertname}&background=random`}
                               className="w-6 h-6"
                             />
                           )}

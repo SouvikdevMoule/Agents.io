@@ -18,9 +18,10 @@ function Page() {
   const { roomid } = useParams();
   const [feedback, setFeedback] = useState<any>(false);
   const [expert, setExpert] = useState<any>();
-  const [coonectaudio, setConnectAudio] = useState(false);
+  const [coonectaudio, setConnectAudio] = useState<any>(false);
   const [transcripts, setTranscripts] = useState<string[]>([]);
   const [audiourl, setAudiourl] = useState<any>();
+  const [showPermissionModal, setShowPermissionModal] = useState(false);
   const DiscussionRoom = useQuery(api.DiscussionRoom.GetDiscussionRoom, { id: roomid as any });
 
   const transcriptContainerRef = useRef<HTMLDivElement>(null);
@@ -80,38 +81,73 @@ function Page() {
     },
   };
 
-
   const recorder = useRef<any>(null);
   const silenceTimeout = useRef<NodeJS.Timeout | null>(null);
 
+  const handleConnectClick = async () => {
+    setShowPermissionModal(true);
+    setConnectAudio('loading');
+    try {
+      await ConnectToServer();
+    } catch (error) {
+      setConnectAudio(false);
+      toast.error("Failed to connect to microphone");
+    }
+  };
 
   const ConnectToServer = async () => {
     if (typeof window !== "undefined" && typeof navigator !== "undefined") {
       try {
-        if (!('webkitSpeechRecognition' in window)) {
-          alert("Your browser doesn't support speech recognition. Try Chrome or Edge.");
+        // Check for secure context (HTTPS) on mobile
+        if (window.location.protocol !== 'https:' && !window.location.hostname.includes('localhost')) {
+          alert("Speech recognition requires HTTPS on mobile devices. Please use a secure connection.");
+          return;
+        }
+
+        // Check browser support
+        if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+          alert("Your browser doesn't support speech recognition. Try Chrome on Android or Safari on iOS.");
+          return;
+        }
+
+        // Check mobile browser compatibility
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        const isChrome = /Chrome/.test(navigator.userAgent);
+        const isSafari = /Safari/.test(navigator.userAgent);
+
+        if (isMobile && !(isChrome || isSafari)) {
+          alert("For best results, please use Chrome on Android or Safari on iOS.");
+          return;
+        }
+
+        // Request microphone permission first
+        try {
+          await navigator.mediaDevices.getUserMedia({ audio: true });
+        } catch (err) {
+          alert("Microphone permission denied. Please enable microphone access in your browser settings.");
           return;
         }
 
         // @ts-ignore
-        const recognition = new webkitSpeechRecognition();
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        const recognition = new SpeechRecognition();
         recognition.continuous = true;
         recognition.interimResults = true;
+        recognition.lang = 'en-US';
 
         recognition.onresult = async (event: any) => {
           let finalTranscript = '';
 
           for (let i = event.resultIndex; i < event.results.length; i++) {
             if (event.results[i].isFinal) {
-              finalTranscript  = event.results[i][0].transcript.trim();
+              finalTranscript = event.results[i][0].transcript.trim();
 
               if (finalTranscript) {
                 // Add user's speech to transcripts with a prefix
                 setTranscripts(prev => [...prev, `You: ${finalTranscript}`]);
-                
 
                 try {
-                  const aiRes  = await AiModel({
+                  const aiRes = await AiModel({
                     topic: DiscussionRoom?.topic,
                     coachingoption: DiscussionRoom?.coachingoption,
                     text: finalTranscript
@@ -123,8 +159,7 @@ function Page() {
                       expertname: DiscussionRoom?.expertname
                     });
                     setAudiourl(url);
-                     setTranscripts(prev => [...prev, `AI: ${aiRes}`]);
-                     
+                    setTranscripts(prev => [...prev, `AI: ${aiRes}`]);
                   } catch (error) {
                     console.error("Text-to-speech error:", error);
                     setTranscripts(prev => [...prev, "AI: [Response received but audio failed]"]);
@@ -140,7 +175,25 @@ function Page() {
 
         recognition.onerror = (event: any) => {
           console.error('Speech recognition error', event.error);
-          setTranscripts(prev => [...prev, `Error: Speech recognition failed - ${event.error}`]);
+          let errorMessage = `Error: Speech recognition failed - ${event.error}`;
+          
+          // Handle specific mobile errors
+          if (event.error === 'not-allowed') {
+            errorMessage = "Microphone access denied. Please allow microphone permissions in your browser settings.";
+          } else if (event.error === 'no-speech') {
+            errorMessage = "No speech detected. Please speak louder or check your microphone.";
+          }
+          
+          setTranscripts(prev => [...prev, errorMessage]);
+
+          // Attempt to restart if error is recoverable
+          if (['audio-capture', 'no-speech', 'network'].includes(event.error)) {
+            setTimeout(() => {
+              if (recorder.current) {
+                recorder.current.start();
+              }
+            }, 1000);
+          }
         };
 
         recognition.onend = () => {
@@ -150,91 +203,77 @@ function Page() {
         recognition.start();
         setConnectAudio(true);
         recorder.current = recognition;
+        setShowPermissionModal(false);
 
       } catch (err) {
         console.error("Error accessing speech recognition:", err);
-        setTranscripts(prev => [...prev, "Error: Failed to start speech recognition"]);
+        setTranscripts(prev => [...prev, "Error: Failed to start speech recognition. Please try again."]);
       }
     }
   };
 
-  // const disconnect = (e: any) => {
-  //   e.preventDefault();
-  //   if (recorder.current) {
-  //     recorder.current.stop();
-  //     recorder.current = null;
-  //     setConnectAudio(false);
-  //     setTranscripts(prev => [...prev, "System: Audio disconnected"]);
-  //     UpdateConversation({ id: roomid as any, conversation: transcripts });
-  //     setFeedback(true)
-  //   }
-  // };
-    const {userData, setUserData} : any = useContext(UserContext);
-    const navigation = useRouter()
-    // Import the UpdateUserCredits mutation
-const UpdateUserCredits = useMutation(api.users.UpdateUserCredits);
+  const {userData, setUserData} : any = useContext(UserContext);
+  const navigation = useRouter()
+  const UpdateUserCredits = useMutation(api.users.UpdateUserCredits);
 
-// Inside the Page component, update the disconnect function
-const disconnect = async (e: any) => {
-  e.preventDefault();
-  if (recorder.current) {
-    recorder.current.stop();
-    recorder.current = null;
-    setConnectAudio(false);
-    setTranscripts(prev => [...prev, "System: Audio disconnected"]);
+  const disconnect = async (e: any) => {
+    e.preventDefault();
+    if (recorder.current) {
+      recorder.current.stop();
+      recorder.current = null;
+      setConnectAudio(false);
+      setTranscripts(prev => [...prev, "System: Audio disconnected"]);
 
-    // Calculate the total length of transcripts
-    const transcriptLength = transcripts.join("").length;
+      // Calculate the total length of transcripts
+      const transcriptLength = transcripts.join("").length;
 
-    try {
-      // Update conversation in the database
-      await UpdateConversation({ id: roomid as any, conversation: transcripts });
+      try {
+        // Update conversation in the database
+        await UpdateConversation({ id: roomid as any, conversation: transcripts });
 
-      // Update user credits in the database
-      const currentCredits = userData?.credits || 0;
-      const newCredits = Math.max(0, currentCredits - transcriptLength); // Prevent negative credits
+        // Update user credits in the database
+        const currentCredits = userData?.credits || 0;
+        const newCredits = Math.max(0, currentCredits - transcriptLength); // Prevent negative credits
 
-      await UpdateUserCredits({
-        _id: userData._id, // Assuming userData contains the user's _id
-        credits: newCredits,
-      });
+        await UpdateUserCredits({
+          _id: userData._id,
+          credits: newCredits,
+        });
 
-      // Update local userData context
-      setUserData((prev: any) => ({
-        ...prev,
-        credits: newCredits,
-      }));
+        // Update local userData context
+        setUserData((prev: any) => ({
+          ...prev,
+          credits: newCredits,
+        }));
 
-      toast("Credits updated successfully!");
-    } catch (error) {
-      console.error("Error updating credits or conversation:", error);
-      toast("Failed to update credits. Please try again.");
+        toast("Credits updated successfully!");
+      } catch (error) {
+        console.error("Error updating credits or conversation:", error);
+        toast("Failed to update credits. Please try again.");
+      }
+
+      setFeedback(true);
     }
-
-    setFeedback(true);
-  }
-};
-
+  };
 
   const UpdateConversation = useMutation(api.DiscussionRoom.UpdateConversation);
   const updateFeedback = useMutation(api.DiscussionRoom.UpdateFeedback);
 
   const GeneratedFeedbackAndNotes = async () => {
-   try{
-    const result = await AiGeneratedFeedbackAndNotes({
-      coachingoption: DiscussionRoom?.coachingoption,
-      conversation: transcripts})
-      console.log(result)
+    try {
+      const result = await AiGeneratedFeedbackAndNotes({
+        coachingoption: DiscussionRoom?.coachingoption,
+        conversation: transcripts
+      });
+      console.log(result);
       await updateFeedback({ id: roomid as any, feedback: result });
       toast("Feedback and notes generated successfully!");
-      navigation.push("/dashboard")
-   }
-    catch(error){
+      navigation.push("/dashboard");
+    } catch (error) {
       console.error("Error generating feedback:", error);
       toast("Failed to generate feedback. Please try again.");
     }
   }
-
 
   return (
     <motion.div
@@ -243,6 +282,28 @@ const disconnect = async (e: any) => {
       initial="hidden"
       animate="visible"
     >
+      {/* Permission Modal */}
+      {showPermissionModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg max-w-sm">
+            <h3 className="font-bold text-lg mb-2">Microphone Access Required</h3>
+            <p className="mb-4">
+              To use speech features, please allow microphone access when prompted.
+              This is required for the app to hear your voice.
+            </p>
+            <div className="flex gap-2">
+              <Button 
+                onClick={() => setShowPermissionModal(false)}
+                variant="outline"
+              >
+                Cancel
+              </Button>
+              <Button onClick={ConnectToServer}>Allow Microphone</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header Section */}
       <div className="flex flex-col gap-3 sticky top-0 z-10 bg-blue-400 backdrop-blur-md p-4 rounded-xl shadow-sm">
         <motion.h1
@@ -322,35 +383,6 @@ const disconnect = async (e: any) => {
         </motion.div>
       </div>
 
-      {/* Transcription Display Section */}
-      {/* <motion.div
-    className="w-full min-h-[20vh] max-h-[30vh] rounded-2xl shadow-xl bg-gradient-to-r from-blue-600 to-cyan-600 p-6 overflow-y-auto"
-    variants={childVariants}
-  >
-    <h3 className="text-lg sm:text-xl font-semibold text-white mb-3">
-      Live Conversation Transcript
-    </h3>
-    {transcripts.length > 0 ? (
-      <div className="flex flex-col gap-3">
-        {transcripts.map((text, index) => (
-          <motion.p
-            key={index}
-            className="text-white/90 text-sm sm:text-base bg-white/10 p-3 rounded-lg"
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.4, delay: index * 0.1 }}
-          >
-            {text}
-          </motion.p>
-        ))}
-      </div>
-    ) : (
-      <p className="text-white/70 italic text-sm sm:text-base">
-        No transcripts yet. Start speaking after connecting audio.
-      </p>
-    )}
-  </motion.div> */}
-
       {/* Footer Section */}
       <motion.div
         className="w-full flex flex-col lg:flex-row gap-6 justify-between items-center py-6"
@@ -358,7 +390,7 @@ const disconnect = async (e: any) => {
       >
         <div className="w-full lg:w-3/4 flex justify-center items-center">
           <motion.div variants={buttonVariants} whileHover="hover" whileTap="tap">
-            {coonectaudio ? (
+            {coonectaudio === true ? (
               <Button
                 onClick={disconnect}
                 className="bg-red-500 hover:bg-red-600 text-white rounded-full px-6 py-3 text-base font-semibold transition-all duration-300"
@@ -367,25 +399,28 @@ const disconnect = async (e: any) => {
               </Button>
             ) : (
               <Button
-                onClick={ConnectToServer}
+                onClick={handleConnectClick}
+                disabled={coonectaudio === 'loading'}
                 className="bg-sky-600 hover:bg-sky-700 text-white rounded-full px-6 py-3 text-base font-semibold transition-all duration-300"
               >
-                Connect to Audio
+                {coonectaudio === 'loading' ? 'Connecting...' : 'Connect to Audio'}
               </Button>
             )}
           </motion.div>
         </div>
-        {feedback ? <Button onClick={GeneratedFeedbackAndNotes}>Generate Feedback/Notes</Button> : <motion.h1
-          className="w-full lg:w-1/4 text-gray-600 italic text-sm text-center"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1, transition: { delay: 0.8, duration: 0.5 } }}
-        >
-          Post-session, receive personalized feedback and insights.
-        </motion.h1>}
-
+        {feedback ? (
+          <Button onClick={GeneratedFeedbackAndNotes}>Generate Feedback/Notes</Button>
+        ) : (
+          <motion.h1
+            className="w-full lg:w-1/4 text-gray-600 italic text-sm text-center"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1, transition: { delay: 0.8, duration: 0.5 } }}
+          >
+            Post-session, receive personalized feedback and insights.
+          </motion.h1>
+        )}
       </motion.div>
     </motion.div>
-
   );
 }
 
