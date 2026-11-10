@@ -21,9 +21,8 @@ const openai = new OpenAI({
 
         const PROMPT = option.PROMPT.replace("{user_topic}", topic);
         
-        // Try with a more reliable model first
         const completion = await openai.chat.completions.create({
-            model: "anthropic/claude-3-haiku", // More reliable alternative
+            model: "openrouter/free",
             messages: [
                 {role: "assistant", content: PROMPT},
                 {role: "user", content: text}
@@ -45,9 +44,8 @@ export const AiGeneratedFeedbackAndNotes = async ({coachingoption, conversation}
 
         const PROMPT = option.SUMMARY_PROMPT;
         
-        // Try with a more reliable model first
         const completion = await openai.chat.completions.create({
-            model: "anthropic/claude-3-haiku", // More reliable alternative
+            model: "openrouter/free",
             messages: [
                 {role: "assistant", content: PROMPT},
                 conversation

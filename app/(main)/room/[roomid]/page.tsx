@@ -2,7 +2,7 @@
 import { Button } from "@/components/ui/button";
 import { api } from "@/convex/_generated/api";
 import { Expertavatar } from "@/services/Option";
-import { UserButton, useUser } from "@stackframe/stack";
+import { UserButton } from "@stackframe/stack";
 import { useMutation, useQuery } from "convex/react";
 import Image from "next/image";
 import { useParams, useRouter } from "next/navigation";
@@ -12,7 +12,6 @@ import { AiGeneratedFeedbackAndNotes, AiModel, TextToSpeech } from "@/services/G
 import ChatBox from "@/components/room/ChatBox";
 import { toast } from "sonner";
 import { UserContext } from "@/app/_context/userContext";
-import Webcam from "react-webcam";
 
 function Page() {
   const { roomid } = useParams();
@@ -84,29 +83,27 @@ function Page() {
   const recorder = useRef<any>(null);
   const silenceTimeout = useRef<NodeJS.Timeout | null>(null);
 
-  const handleConnectClick = async () => {
+  const handleConnectClick = () => {
     setShowPermissionModal(true);
-    setConnectAudio('loading');
-    try {
-      await ConnectToServer();
-    } catch (error) {
-      setConnectAudio(false);
-      toast.error("Failed to connect to microphone");
-    }
   };
 
   const ConnectToServer = async () => {
+    setConnectAudio('loading');
+    setShowPermissionModal(false);
+
     if (typeof window !== "undefined" && typeof navigator !== "undefined") {
       try {
         // Check for secure context (HTTPS) on mobile
         if (window.location.protocol !== 'https:' && !window.location.hostname.includes('localhost')) {
           alert("Speech recognition requires HTTPS on mobile devices. Please use a secure connection.");
+          setConnectAudio(false);
           return;
         }
 
         // Check browser support
         if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
           alert("Your browser doesn't support speech recognition. Try Chrome on Android or Safari on iOS.");
+          setConnectAudio(false);
           return;
         }
 
@@ -117,6 +114,7 @@ function Page() {
 
         if (isMobile && !(isChrome || isSafari)) {
           alert("For best results, please use Chrome on Android or Safari on iOS.");
+          setConnectAudio(false);
           return;
         }
 
@@ -125,6 +123,7 @@ function Page() {
           await navigator.mediaDevices.getUserMedia({ audio: true });
         } catch (err) {
           alert("Microphone permission denied. Please enable microphone access in your browser settings.");
+          setConnectAudio(false);
           return;
         }
 
@@ -208,7 +207,10 @@ function Page() {
       } catch (err) {
         console.error("Error accessing speech recognition:", err);
         setTranscripts(prev => [...prev, "Error: Failed to start speech recognition. Please try again."]);
+        setConnectAudio(false);
       }
+    } else {
+      setConnectAudio(false);
     }
   };
 

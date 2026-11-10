@@ -9,19 +9,15 @@ export const CreateUser = mutation({
         const userData = await ctx.db.query('users').filter(q => q.eq(q.field('email'), args.email)).collect()
         // Create the user
         if(userData.length === 0){
-        const data = {
-            name: args.name,
-            email: args.email,
-            credits: 50000,
+            const userId = await ctx.db.insert('users', {
+                name: args.name,
+                email: args.email,
+                credits: 50000,
+            });
+            // Return the full document including _id
+            return await ctx.db.get(userId);
         }
-        const result = await ctx.db.insert('users',{ 
-            ...data}
-        );
-  
-        return data;
-    }
-    return userData[0];
-    // Return the user data
+        return userData[0];
     }
 })
 

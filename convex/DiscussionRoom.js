@@ -77,14 +77,11 @@ export const GetAllDiscussionRoomsByUser = query({
     user: v.optional(v.id('users')), // Reference to the users table, optional
   },
   handler: async (ctx, args) => {
-    const query = ctx.db.query('DiscussionRoom');
-    
-    // Apply user filter only if user is provided
-    const filteredQuery = args.user
-      ? query.filter((q) => q.eq(q.field('user'), args.user))
-      : query;
+    // Return empty array if no user is provided
+    if (!args.user) return [];
 
-    const result = await filteredQuery
+    const result = await ctx.db.query('DiscussionRoom')
+      .filter((q) => q.eq(q.field('user'), args.user))
       .order('desc')
       .collect();
 

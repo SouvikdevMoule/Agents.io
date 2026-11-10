@@ -1,7 +1,6 @@
 'use client'; // Required for client-side GSAP animations
 
 import { Button } from '@/components/ui/button';
-import { UserButton } from '@stackframe/stack';
 import React, { useEffect } from 'react';
 import Image from 'next/image';
 import { Expertlist } from '@/services/Option';
@@ -51,7 +50,7 @@ export default function LandingPage() {
   return (
     <div className="min-h-screen bg-black text-white font-futura">
       {/* Header */}
-      <header className="flex justify-between items-center  bg-gradient-to-r from-blue-900/30 to-purple-900/30 backdrop-blur-md sticky top- U z-20 border-b border-blue-500/20">
+      <header className="flex justify-between items-center  bg-gradient-to-r from-blue-900/30 to-purple-900/30 backdrop-blur-md sticky top-0 z-20 border-b border-blue-500/20">
       <Header/>
       </header>
 
@@ -169,7 +168,7 @@ export default function LandingPage() {
 
       {/* Testimonials Section */}
       <section
-        className="py-20 max-w-7xl mx-auto px-4 bg-cover bg-center"
+        className="relative py-20 max-w-7xl mx-auto px-4 bg-cover bg-center"
         style={{
           backgroundImage: `url('https://images.unsplash.com/photo-1553342385-111fd6b6ab5b?q=80&w=2560&auto=format&fit=crop')`, // Futuristic tech background
         }}
